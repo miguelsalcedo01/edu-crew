@@ -1,0 +1,664 @@
+[
+    {
+      "nodes": [
+        {
+          "parameters": {
+            "httpMethod": "POST",
+            "path": "item-recognition",
+            "responseMode": "onReceived"
+          },
+          "name": "Webhook Item Recognition",
+          "type": "n8n-nodes-base.webhook",
+          "typeVersion": 1,
+          "position": [
+            250,
+            300
+          ]
+        },
+        {
+          "parameters": {
+            "url": "https://vision.googleapis.com/v1/images:annotate?key=YOUR_GOOGLE_VISION_API_KEY",
+            "options": {
+              "body": {
+                "requests": [
+                  {
+                    "image": {
+                      "content": "={{$json[\"body\"][\"image\"]}}"
+                    },
+                    "features": [
+                      {
+                        "type": "LABEL_DETECTION",
+                        "maxResults": 10
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "name": "Google Vision API",
+          "type": "n8n-nodes-base.httpRequest",
+          "typeVersion": 1,
+          "position": [
+            450,
+            300
+          ]
+        },
+        {
+          "parameters": {
+            "url": "https://api.duckduckgo.com/?q={{$json[\"body\"][\"product_name\"]}}&format=json",
+            "options": {}
+          },
+          "name": "DuckDuckGo API",
+          "type": "n8n-nodes-base.httpRequest",
+          "typeVersion": 1,
+          "position": [
+            650,
+            300
+          ]
+        },
+        {
+          "parameters": {
+            "functionCode": "const purchasePrice = $json[\"body\"][\"purchase_price\"];\nconst marketValue = $json[\"market_value\"];\nconst ebayFees = marketValue * 0.1; // Example fee\nconst roi = (marketValue - purchasePrice - ebayFees) / purchasePrice * 100;\nreturn [{ roi }];"
+          },
+          "name": "Calculate ROI",
+          "type": "n8n-nodes-base.function",
+          "typeVersion": 1,
+          "position": [
+            850,
+            300
+          ]
+        },
+        {
+          "parameters": {
+            "operation": "insert",
+            "table": "roi_data",
+            "columns": {
+              "roi": "={{$json[[0]](https://python.langchain.com/docs/integrations/document_loaders/etherscan/).roi}}",
+              "item_id": "={{$json[\"body\"][\"item_id\"]}}"
+            }
+          },
+          "name": "Store ROI in Database",
+          "type": "n8n-nodes-base.postgres",
+          "typeVersion": 1,
+          "position": [
+            1050,
+            300
+          ]
+        },
+        {
+          "parameters": {
+            "responseMode": "lastNode",
+            "responseData": "={{$json[[0]](https://python.langchain.com/docs/integrations/document_loaders/etherscan/).roi}}"
+          },
+          "name": "Send ROI to Frontend",
+          "type": "n8n-nodes-base.webhookResponse",
+          "typeVersion": 1,
+          "position": [
+            1250,
+            300
+          ]
+        }
+      ],
+      "connections": {
+        "Webhook Item Recognition": {
+          "main": [
+            [
+              {
+                "node": "Google Vision API",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Vision API": {
+          "main": [
+            [
+              {
+                "node": "DuckDuckGo API",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "DuckDuckGo API": {
+          "main": [
+            [
+              {
+                "node": "Calculate ROI",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Calculate ROI": {
+          "main": [
+            [
+              {
+                "node": "Store ROI in Database",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Store ROI in Database": {
+          "main": [
+            [
+              {
+                "node": "Send ROI to Frontend",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "nodes": [
+        {
+          "parameters": {
+            "httpMethod": "POST",
+            "path": "inventory-management",
+            "responseMode": "onReceived"
+          },
+          "name": "Webhook Inventory Management",
+          "type": "n8n-nodes-base.webhook",
+          "typeVersion": 1,
+          "position": [
+            250,
+            300
+          ]
+        },
+        {
+          "parameters": {
+            "operation": "insert",
+            "table": "inventory",
+            "columns": {
+              "item_id": "={{$json[\"body\"][\"item_id\"]}}",
+              "description": "={{$json[\"body\"][\"description\"]}}",
+              "purchase_price": "={{$json[\"body\"][\"purchase_price\"]}}",
+              "roi": "={{$json[\"body\"][\"roi\"]}}"
+            }
+          },
+          "name": "Create Inventory Record",
+          "type": "n8n-nodes-base.postgres",
+          "typeVersion": 1,
+          "position": [
+            450,
+            300
+          ]
+        },
+        {
+          "parameters": {
+            "responseMode": "lastNode"
+          },
+          "name": "Send Confirmation to Frontend",
+          "type": "n8n-nodes-base.webhookResponse",
+          "typeVersion": 1,
+          "position": [
+            650,
+            300
+          ]
+        }
+      ],
+      "connections": {
+        "Webhook Inventory Management": {
+          "main": [
+            [
+              {
+                "node": "Create Inventory Record",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create Inventory Record": {
+          "main": [
+            [
+              {
+                "node": "Send Confirmation to Frontend",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "nodes": [
+        {
+          "parameters": {
+            "httpMethod": "POST",
+            "path": "listing-creation",
+            "responseMode": "onReceived"
+          },
+          "name": "Webhook Listing Creation",
+          "type": "n8n-nodes-base.webhook",
+          "typeVersion": 1,
+          "position": [
+            250,
+            300
+          ]
+        },
+        {
+          "parameters": {
+            "operation": "get",
+            "table": "inventory",
+            "columns": {
+              "item_id": "={{$json[\"body\"][\"item_id\"]}}"
+            }
+          },
+          "name": "Retrieve Item Details",
+          "type": "n8n-nodes-base.postgres",
+          "typeVersion": 1,
+          "position": [
+            450,
+            300
+          ]
+        },
+        {
+          "parameters": {
+            "url": "https://api.openai.com/v1/engines/davinci-codex/completions",
+            "options": {
+              "body": {
+                "prompt": "Generate a compelling eBay listing for the item: {{$json[\"description\"]}}",
+                "max_tokens": 150
+              }
+            }
+          },
+          "name": "OpenAI Listing Generator",
+          "type": "n8n-nodes-base.httpRequest",
+          "typeVersion": 1,
+          "position": [
+            650,
+            300
+          ]
+        },
+        {
+          "parameters": {
+            "url": "https://api.ebay.com/sell/inventory/v1/inventory_item",
+            "options": {
+              "method": "POST",
+              "body": {
+                "title": "={{$json[\"title\"]}}",
+                "description": "={{$json[\"description\"]}}",
+                "price": "={{$json[\"price\"]}}"
+              }
+            }
+          },
+          "name": "eBay API Create Draft Listing",
+          "type": "n8n-nodes-base.httpRequest",
+          "typeVersion": 1,
+          "position": [
+            850,
+            300
+          ]
+        },
+        {
+          "parameters": {
+            "responseMode": "lastNode"
+          },
+          "name": "Send Draft Listing to Frontend",
+          "type": "n8n-nodes-base.webhookResponse",
+          "typeVersion": 1,
+          "position": [
+            1050,
+            300
+          ]
+        }
+      ],
+      "connections": {
+        "Webhook Listing Creation": {
+          "main": [
+            [
+              {
+                "node": "Retrieve Item Details",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Retrieve Item Details": {
+          "main": [
+            [
+              {
+                "node": "OpenAI Listing Generator",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenAI Listing Generator": {
+          "main": [
+            [
+              {
+                "node": "eBay API Create Draft Listing",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "eBay API Create Draft Listing": {
+          "main": [
+            [
+              {
+                "node": "Send Draft Listing to Frontend",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "nodes": [
+        {
+          "parameters": {
+            "httpMethod": "POST",
+            "path": "listing-submission",
+            "responseMode": "onReceived"
+          },
+          "name": "Webhook Listing Submission",
+          "type": "n8n-nodes-base.webhook",
+          "typeVersion": 1,
+          "position": [
+            250,
+            300
+          ]
+        },
+        {
+          "parameters": {
+            "url": "https://api.ebay.com/sell/inventory/v1/inventory_item/{{ $json[\"body\"][\"item_id\"] }}",
+            "options": {
+              "method": "PUT",
+              "body": {
+                "status": "ACTIVE"
+              }
+            }
+          },
+          "name": "eBay API Submit Listing",
+          "type": "n8n-nodes-base.httpRequest",
+          "typeVersion": 1,
+          "position": [
+            450,
+            300
+          ]
+        },
+        {
+          "parameters": {
+            "operation": "update",
+            "table": "inventory",
+            "columns": {
+              "listing_id": "={{$json[\"body\"][\"listing_id\"]}}"
+            },
+            "where": {
+              "item_id": "={{$json[\"body\"][\"item_id\"]}}"
+            }
+          },
+          "name": "Update Inventory with Listing ID",
+          "type": "n8n-nodes-base.postgres",
+          "typeVersion": 1,
+          "position": [
+            650,
+            300
+          ]
+        },
+        {
+          "parameters": {
+            "responseMode": "lastNode"
+          },
+          "name": "Send Confirmation to Frontend",
+          "type": "n8n-nodes-base.webhookResponse",
+          "typeVersion": 1,
+          "position": [
+            850,
+            300
+          ]
+        }
+      ],
+      "connections": {
+        "Webhook Listing Submission": {
+          "main": [
+            [
+              {
+                "node": "eBay API Submit Listing",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "eBay API Submit Listing": {
+          "main": [
+            [
+              {
+                "node": "Update Inventory with Listing ID",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update Inventory with Listing ID": {
+          "main": [
+            [
+              {
+                "node": "Send Confirmation to Frontend",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "nodes": [
+        {
+          "parameters": {
+            "httpMethod": "POST",
+            "path": "listing-management",
+            "responseMode": "onReceived"
+          },
+          "name": "Webhook Listing Management",
+          "type": "n8n-nodes-base.webhook",
+          "typeVersion": 1,
+          "position": [
+            250,
+            300
+          ]
+        },
+        {
+          "parameters": {
+            "url": "https://api.ebay.com/sell/inventory/v1/inventory_item/{{ $json[\"body\"][\"item_id\"] }}",
+            "options": {
+              "method": "GET"
+            }
+          },
+          "name": "eBay API Get Listing Status",
+          "type": "n8n-nodes-base.httpRequest",
+          "typeVersion": 1,
+          "position": [
+            450,
+            300
+          ]
+        },
+        {
+          "parameters": {
+            "operation": "update",
+            "table": "inventory",
+            "columns": {
+              "status": "={{$json[\"body\"][\"status\"]}}"
+            },
+            "where": {
+              "item_id": "={{$json[\"body\"][\"item_id\"]}}"
+            }
+          },
+          "name": "Update Inventory Status",
+          "type": "n8n-nodes-base.postgres",
+          "typeVersion": 1,
+          "position": [
+            650,
+            300
+          ]
+        },
+        {
+          "parameters": {
+            "responseMode": "lastNode"
+          },
+          "name": "Send Status Update to Frontend",
+          "type": "n8n-nodes-base.webhookResponse",
+          "typeVersion": 1,
+          "position": [
+            850,
+            300
+          ]
+        }
+      ],
+      "connections": {
+        "Webhook Listing Management": {
+          "main": [
+            [
+              {
+                "node": "eBay API Get Listing Status",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "eBay API Get Listing Status": {
+          "main": [
+            [
+              {
+                "node": "Update Inventory Status",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update Inventory Status": {
+          "main": [
+            [
+              {
+                "node": "Send Status Update to Frontend",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "nodes": [
+        {
+          "parameters": {
+            "httpMethod": "POST",
+            "path": "shipping-agent",
+            "responseMode": "onReceived"
+          },
+          "name": "Webhook Shipping Agent",
+          "type": "n8n-nodes-base.webhook",
+          "typeVersion": 1,
+          "position": [
+            250,
+            300
+          ]
+        },
+        {
+          "parameters": {
+            "url": "https://api.ebay.com/sell/fulfillment/v1/order/{{ $json[\"body\"][\"order_id\"] }}",
+            "options": {
+              "method": "GET"
+            }
+          },
+          "name": "eBay API Get Shipping Info",
+          "type": "n8n-nodes-base.httpRequest",
+          "typeVersion": 1,
+          "position": [
+            450,
+            300
+          ]
+        },
+        {
+          "parameters": {
+            "url": "https://api.shipstation.com/shippinglabels/create",
+            "options": {
+              "method": "POST",
+              "body": {
+                "order_id": "={{$json[\"body\"][\"order_id\"]}}"
+              }
+            }
+          },
+          "name": "ShipStation API Generate Shipping Label",
+          "type": "n8n-nodes-base.httpRequest",
+          "typeVersion": 1,
+          "position": [
+            650,
+            300
+          ]
+        },
+        {
+          "parameters": {
+            "responseMode": "lastNode"
+          },
+          "name": "Send Shipping Info to User",
+          "type": "n8n-nodes-base.webhookResponse",
+          "typeVersion": 1,
+          "position": [
+            850,
+            300
+          ]
+        }
+      ],
+      "connections": {
+        "Webhook Shipping Agent": {
+          "main": [
+            [
+              {
+                "node": "eBay API Get Shipping Info",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "eBay API Get Shipping Info": {
+          "main": [
+            [
+              {
+                "node": "ShipStation API Generate Shipping Label",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "ShipStation API Generate Shipping Label": {
+          "main": [
+            [
+              {
+                "node": "Send Shipping Info to User",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    }
+  ]
+  
